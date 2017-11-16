@@ -319,12 +319,51 @@ class GioFileSystem(object):
         except GLib.GError as exc:
             raise IOError(str(exc))
 
+    def _rm(self, gfile):
+        try:
+            trashed = gfile.delete()
+        except Exception as exc:
+            logger.warning("Failed to delete %s", gfile.get_uri(),
+                           exc_info=exc)
+        if not trashed:
+            raise IOError("Failed to trash/delete %s" % gfile.get_uri())
+
+    @staticmethod
+    def _recurse(parent):
+        try:
+            children = parent.enumerate_children(
+                Gio.FILE_ATTRIBUTE_STANDARD_NAME,
+                Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
+                None
+            )
+        except GLib.GError:
+            children = []
+
+        for child in children:
+            name = child.get_name()
+            child = parent.get_child(name)
+            for child in GioFileSystem._recurse(child):
+                yield child
+
+        yield parent
+
     def rm_rf(self, url):
         try:
-            logger.info("Deleting %s ...", url)
+            logger.info("Trashing %s ...", url)
             f = Gio.File.new_for_uri(url)
-            if not f.trash():
-                raise IOError("Failed to delete %s" % url)
+            trashed = False
+            try:
+                trashed = f.trash()
+            except Exception as exc:
+                logger.warning("Failed to move %s to trash",
+                               url, exc_info=exc)
+            if trashed:
+                return
+
+            logger.info("Falling back on gfile.delete(%s) (recursive)", url)
+            for f in self._recurse(f):
+                self._rm(f)
+
         except GLib.GError as exc:
             raise IOError(str(exc))
 
