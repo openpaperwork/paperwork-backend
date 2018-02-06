@@ -1,3 +1,8 @@
+# This repository is obsolete
+
+[Source code of the backend is now in the same Git repository than the frontend](https://github.com/openpaperwork/paperwork/tree/master/paperwork-backend)
+
+
 ## Description
 
 [Paperwork](https://github.com/openpaperwork/paperwork#readme) is a GUI to make papers searchable.
